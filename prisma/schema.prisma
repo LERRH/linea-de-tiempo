@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String   @unique
+  createdAt    DateTime @default(now())
+
+  timelines    Timeline[]
+  sharedWithMe TimelineShare[]
+}
+
+model Timeline {
+  id        String   @id @default(cuid())
+  title     String
+  style     Json
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items  TimelineItem[]
+  shares TimelineShare[]
+}
+
+model TimelineItem {
+  id         String   @id @default(cuid())
+  timelineId String
+  timeline   Timeline @relation(fields: [timelineId], references: [id], onDelete: Cascade)
+  date       DateTime
+  grupoId    String   @default("")
+  encabezado String   @default("")
+  hito       String   @default("")
+  order      Int
+
+  @@index([timelineId])
+}
+
+enum Permission {
+  VIEW
+  EDIT
+}
+
+model TimelineShare {
+  id               String     @id @default(cuid())
+  timelineId       String
+  timeline         Timeline   @relation(fields: [timelineId], references: [id], onDelete: Cascade)
+  sharedWithUserId String
+  sharedWithUser   User       @relation(fields: [sharedWithUserId], references: [id], onDelete: Cascade)
+  permission       Permission @default(VIEW)
+  createdAt        DateTime   @default(now())
+
+  @@unique([timelineId, sharedWithUserId])
+}
