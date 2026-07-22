@@ -26,6 +26,8 @@ const TICK_LEN = 30;
 const TEXT_GAP = 10;
 const BOTTOM_MARGIN = 8;
 const DOT_R = 7;
+const MARKER_LINE_INSET = 14;
+const MARKER_LABEL_INSET = 11;
 const LEGEND_ROW_HEIGHT = 26;
 const LEGEND_SWATCH = 14;
 const LEGEND_FONT_SIZE = 12;
@@ -280,8 +282,8 @@ const TimelineChart = forwardRef<SVGSVGElement, Props>(function TimelineChart({ 
             x2={todayMarker.x}
             y2={
               style.todayMarkerPosition === "top"
-                ? todayMarker.lineY - halfRowHeight + 14
-                : todayMarker.lineY + halfRowHeight - 14
+                ? todayMarker.lineY - halfRowHeight + MARKER_LINE_INSET
+                : todayMarker.lineY + halfRowHeight - MARKER_LINE_INSET
             }
             stroke={style.todayMarkerColor}
             strokeWidth={2}
@@ -291,8 +293,8 @@ const TimelineChart = forwardRef<SVGSVGElement, Props>(function TimelineChart({ 
             x={todayMarker.x}
             y={
               style.todayMarkerPosition === "top"
-                ? todayMarker.lineY - halfRowHeight + 2
-                : todayMarker.lineY + halfRowHeight - 2
+                ? todayMarker.lineY - halfRowHeight + MARKER_LABEL_INSET
+                : todayMarker.lineY + halfRowHeight - MARKER_LABEL_INSET
             }
             textAnchor="middle"
             fontSize={11}
