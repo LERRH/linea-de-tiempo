@@ -40,6 +40,7 @@ export interface TimelineStyle {
   rows: 1 | 2;
   showTodayMarker: boolean;
   todayMarkerColor: string;
+  todayMarkerPosition: "top" | "bottom";
   showDaysBetween: boolean;
   columns: ColumnsConfig;
   groups: TimelineGroup[];
@@ -52,6 +53,7 @@ export const DEFAULT_STYLE: TimelineStyle = {
   rows: 1,
   showTodayMarker: false,
   todayMarkerColor: "#FF8A65",
+  todayMarkerPosition: "bottom",
   showDaysBetween: false,
   columns: { fecha: true, encabezado: true, hito: true },
   groups: [],

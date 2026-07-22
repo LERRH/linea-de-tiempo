@@ -88,13 +88,25 @@ export default function StylePanel({ style, onChange, editable }: Props) {
               Marca de fecha actual
             </label>
             {style.showTodayMarker && (
-              <input
-                type="color"
-                value={style.todayMarkerColor}
-                onChange={(e) => onChange({ ...style, todayMarkerColor: e.target.value })}
-                className="h-7 w-12 rounded border border-slate-200"
-                title="Color de la marca"
-              />
+              <>
+                <input
+                  type="color"
+                  value={style.todayMarkerColor}
+                  onChange={(e) => onChange({ ...style, todayMarkerColor: e.target.value })}
+                  className="h-7 w-12 rounded border border-slate-200"
+                  title="Color de la marca"
+                />
+                <select
+                  value={style.todayMarkerPosition}
+                  onChange={(e) =>
+                    onChange({ ...style, todayMarkerPosition: e.target.value === "top" ? "top" : "bottom" })
+                  }
+                  className="rounded border border-slate-200 px-2 py-1 text-sm outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent"
+                >
+                  <option value="bottom">Abajo</option>
+                  <option value="top">Arriba</option>
+                </select>
+              </>
             )}
           </div>
 

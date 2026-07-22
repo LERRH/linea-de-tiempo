@@ -20,14 +20,21 @@ const IDEAL_SPACING = 200;
 const MIN_SPACING = 60;
 const MAX_WIDTH = 1000;
 const MARGIN_X = 90;
-const ROW_HEIGHT = 300;
-const ROW_LINE_Y = 150;
+const EMPTY_HEIGHT = 300;
 const ROW_GAP = 40;
 const TICK_LEN = 30;
+const TEXT_GAP = 10;
+const BOTTOM_MARGIN = 8;
 const DOT_R = 7;
 const LEGEND_ROW_HEIGHT = 26;
 const LEGEND_SWATCH = 14;
 const LEGEND_FONT_SIZE = 12;
+
+interface LineDesc {
+  text: string;
+  bold: boolean;
+  color: string;
+}
 
 function wrapText(text: string, maxCharsPerLine: number): string[] {
   const words = text.trim().split(/\s+/).filter(Boolean);
@@ -43,7 +50,7 @@ function wrapText(text: string, maxCharsPerLine: number): string[] {
     }
   }
   if (current) lines.push(current);
-  return lines.slice(0, 3);
+  return lines;
 }
 
 function layoutLegendRows(groups: TimelineStyle["groups"], availableWidth: number) {
@@ -79,8 +86,8 @@ const TimelineChart = forwardRef<SVGSVGElement, Props>(function TimelineChart({ 
 
   if (n === 0) {
     return (
-      <svg ref={ref} width={700} height={ROW_HEIGHT} viewBox={`0 0 700 ${ROW_HEIGHT}`}>
-        <text x={350} y={ROW_LINE_Y} textAnchor="middle" fill="#94a3b8" fontSize={14}>
+      <svg ref={ref} width={700} height={EMPTY_HEIGHT} viewBox={`0 0 700 ${EMPTY_HEIGHT}`}>
+        <text x={350} y={EMPTY_HEIGHT / 2} textAnchor="middle" fill="#94a3b8" fontSize={14}>
           Agrega filas en la tabla para ver la línea de tiempo
         </text>
       </svg>
@@ -98,12 +105,39 @@ const TimelineChart = forwardRef<SVGSVGElement, Props>(function TimelineChart({ 
     perRowCount > 1 ? Math.max(MIN_SPACING, Math.min(IDEAL_SPACING, availableWidth / (perRowCount - 1))) : IDEAL_SPACING;
   const contentWidth = (perRowCount - 1) * spacing;
   const width = Math.max(700, MARGIN_X * 2 + contentWidth);
-  const maxCharsPerLine = Math.round(Math.max(10, Math.min(22, spacing / 8)));
+  const maxCharsPerLine = Math.round(Math.max(10, Math.min(30, spacing / 7)));
+  const lineHeight = style.fontSizePx + 6;
+
+  function buildLineDescs(item: ChartItem): LineDesc[] {
+    const color = colorOf(item.grupoId);
+    const lineDescs: LineDesc[] = [];
+    if (style.columns.fecha) {
+      lineDescs.push({ text: formatDate(new Date(item.date + "T00:00:00")), bold: true, color });
+    }
+    if (style.columns.encabezado && item.encabezado.trim()) {
+      for (const line of wrapText(item.encabezado, maxCharsPerLine)) {
+        lineDescs.push({ text: line, bold: true, color: "#1e293b" });
+      }
+    }
+    if (style.columns.hito && item.hito.trim()) {
+      for (const line of wrapText(item.hito, maxCharsPerLine)) {
+        lineDescs.push({ text: line, bold: false, color: "#334155" });
+      }
+    }
+    return lineDescs;
+  }
+
+  // Every point reserves the same vertical space (above and below its row's
+  // line) so no label — however long — gets clipped by the SVG canvas.
+  const maxLines = Math.max(1, ...sorted.map((item) => buildLineDescs(item).length));
+  const halfRowHeight = TICK_LEN + TEXT_GAP + maxLines * lineHeight + BOTTOM_MARGIN;
+  const rowLineY = halfRowHeight;
+  const rowHeight = halfRowHeight * 2;
 
   const legendRows = layoutLegendRows(style.groups, width - MARGIN_X * 2);
   const legendHeight = legendRows.length > 0 ? legendRows.length * LEGEND_ROW_HEIGHT + 16 : 0;
 
-  const chartHeight = useTwoRows ? ROW_HEIGHT * 2 + ROW_GAP : ROW_HEIGHT;
+  const chartHeight = useTwoRows ? rowHeight * 2 + ROW_GAP : rowHeight;
   const height = chartHeight + legendHeight;
 
   const xFor = (index: number, rowCount: number) => (rowCount === 1 ? width / 2 : MARGIN_X + index * spacing);
@@ -152,29 +186,14 @@ const TimelineChart = forwardRef<SVGSVGElement, Props>(function TimelineChart({ 
           const x = xFor(i, rowCount);
           const color = colorOf(item.grupoId);
           const isTop = (globalOffset + i) % 2 === 0;
-          const lineHeight = style.fontSizePx + 6;
-
-          const lineDescs: { text: string; bold: boolean; color: string }[] = [];
-          if (style.columns.fecha) {
-            lineDescs.push({ text: formatDate(new Date(item.date + "T00:00:00")), bold: true, color });
-          }
-          if (style.columns.encabezado && item.encabezado.trim()) {
-            for (const line of wrapText(item.encabezado, maxCharsPerLine)) {
-              lineDescs.push({ text: line, bold: true, color: "#1e293b" });
-            }
-          }
-          if (style.columns.hito && item.hito.trim()) {
-            for (const line of wrapText(item.hito, maxCharsPerLine)) {
-              lineDescs.push({ text: line, bold: false, color: "#334155" });
-            }
-          }
+          const lineDescs = buildLineDescs(item);
 
           const tickY2 = isTop ? lineY - TICK_LEN : lineY + TICK_LEN;
           const totalTextHeight = lineDescs.length * lineHeight;
 
           const firstLineY = isTop
-            ? tickY2 - 10 - (totalTextHeight - lineHeight)
-            : tickY2 + 10 + lineHeight;
+            ? tickY2 - TEXT_GAP - (totalTextHeight - lineHeight)
+            : tickY2 + TEXT_GAP + lineHeight;
 
           return (
             <g key={`item-${globalOffset}-${i}`}>
@@ -203,8 +222,8 @@ const TimelineChart = forwardRef<SVGSVGElement, Props>(function TimelineChart({ 
     );
   }
 
-  const row1LineY = ROW_LINE_Y;
-  const row2LineY = ROW_HEIGHT + ROW_GAP + ROW_LINE_Y;
+  const row1LineY = rowLineY;
+  const row2LineY = rowHeight + ROW_GAP + rowLineY;
 
   function globalFractionalIndex(dateStr: string): number {
     if (n === 1) return 0;
@@ -259,14 +278,22 @@ const TimelineChart = forwardRef<SVGSVGElement, Props>(function TimelineChart({ 
             x1={todayMarker.x}
             y1={todayMarker.lineY}
             x2={todayMarker.x}
-            y2={todayMarker.lineY + (ROW_HEIGHT - ROW_LINE_Y) - 14}
+            y2={
+              style.todayMarkerPosition === "top"
+                ? todayMarker.lineY - halfRowHeight + 14
+                : todayMarker.lineY + halfRowHeight - 14
+            }
             stroke={style.todayMarkerColor}
             strokeWidth={2}
             strokeDasharray="6 4"
           />
           <text
             x={todayMarker.x}
-            y={todayMarker.lineY + (ROW_HEIGHT - ROW_LINE_Y) - 2}
+            y={
+              style.todayMarkerPosition === "top"
+                ? todayMarker.lineY - halfRowHeight + 2
+                : todayMarker.lineY + halfRowHeight - 2
+            }
             textAnchor="middle"
             fontSize={11}
             fontWeight={700}
