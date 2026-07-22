@@ -31,8 +31,8 @@ export default function GroupsPanel({ groups, onChange, editable }: Props) {
   }
 
   return (
-    <div className="rounded border border-slate-200 bg-white p-4">
-      <h3 className="mb-3 text-sm font-medium text-slate-700">Grupos (leyenda por colores)</h3>
+    <div className="rounded-xl border border-black/5 bg-white p-4 shadow-sm">
+      <h3 className="mb-3 text-sm font-medium text-brand-ink">Grupos (leyenda por colores)</h3>
 
       {groups.length === 0 && (
         <p className="mb-3 text-sm text-slate-500">
@@ -55,7 +55,7 @@ export default function GroupsPanel({ groups, onChange, editable }: Props) {
               value={group.name}
               disabled={!editable}
               onChange={(e) => updateGroup(group.id, { name: e.target.value })}
-              className="flex-1 rounded border border-slate-200 px-2 py-1 text-sm disabled:bg-slate-50"
+              className="flex-1 rounded border border-slate-200 px-2 py-1 text-sm outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent disabled:bg-slate-50"
             />
             {editable && (
               <button onClick={() => removeGroup(group.id)} className="text-sm text-slate-400 hover:text-red-600">
@@ -69,7 +69,7 @@ export default function GroupsPanel({ groups, onChange, editable }: Props) {
       {editable && (
         <button
           onClick={addGroup}
-          className="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100"
+          className="rounded border border-brand-accent px-3 py-1.5 text-sm text-brand-accent hover:bg-brand-accent/10"
         >
           + Agregar grupo
         </button>

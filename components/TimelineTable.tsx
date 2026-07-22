@@ -68,16 +68,17 @@ export default function TimelineTable({ items, onChange, editable, columns, onCo
                 checked={columns[key]}
                 onChange={() => toggleColumn(key)}
                 disabled={columns[key] && activeCount <= 1}
+                className="accent-brand-accent"
               />
               {label}
             </label>
           ))}
         </div>
       )}
-      <div className="overflow-x-auto rounded border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-xl border border-black/5 bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 text-left">
+            <tr className="border-b border-slate-200 bg-brand-cream/40 text-left">
               {columns.fecha && <th className="px-3 py-2 font-medium text-slate-600">Fecha</th>}
               {columns.encabezado && <th className="px-3 py-2 font-medium text-slate-600">Encabezado</th>}
               {columns.hito && <th className="px-3 py-2 font-medium text-slate-600">Hito</th>}
@@ -95,7 +96,7 @@ export default function TimelineTable({ items, onChange, editable, columns, onCo
                       value={item.date}
                       disabled={!editable}
                       onChange={(e) => update(i, { date: e.target.value })}
-                      className="w-full rounded border border-slate-200 px-2 py-1 disabled:bg-slate-50"
+                      className="w-full rounded border border-slate-200 px-2 py-1 outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent disabled:bg-slate-50"
                     />
                   </td>
                 )}
@@ -107,7 +108,7 @@ export default function TimelineTable({ items, onChange, editable, columns, onCo
                       disabled={!editable}
                       placeholder="Encabezado (negrita)"
                       onChange={(e) => update(i, { encabezado: e.target.value })}
-                      className="w-full rounded border border-slate-200 px-2 py-1 font-semibold disabled:bg-slate-50"
+                      className="w-full rounded border border-slate-200 px-2 py-1 font-semibold outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent disabled:bg-slate-50"
                     />
                   </td>
                 )}
@@ -119,7 +120,7 @@ export default function TimelineTable({ items, onChange, editable, columns, onCo
                       disabled={!editable}
                       placeholder="Nombre del hito"
                       onChange={(e) => update(i, { hito: e.target.value })}
-                      className="w-full rounded border border-slate-200 px-2 py-1 disabled:bg-slate-50"
+                      className="w-full rounded border border-slate-200 px-2 py-1 outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent disabled:bg-slate-50"
                     />
                   </td>
                 )}
@@ -128,7 +129,7 @@ export default function TimelineTable({ items, onChange, editable, columns, onCo
                     value={item.grupoId}
                     disabled={!editable}
                     onChange={(e) => update(i, { grupoId: e.target.value })}
-                    className="w-full rounded border border-slate-200 px-2 py-1 disabled:bg-slate-50"
+                    className="w-full rounded border border-slate-200 px-2 py-1 outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent disabled:bg-slate-50"
                   >
                     <option value="">Sin grupo</option>
                     {groups.map((g) => (
@@ -158,7 +159,7 @@ export default function TimelineTable({ items, onChange, editable, columns, onCo
                     </button>{" "}
                     <button
                       onClick={() => insertRowAfter(i)}
-                      className="text-slate-400 hover:text-blue-600"
+                      className="text-slate-400 hover:text-brand-accent"
                       title="Insertar hito debajo"
                     >
                       +
@@ -177,7 +178,7 @@ export default function TimelineTable({ items, onChange, editable, columns, onCo
           </tbody>
         </table>
         {editable && (
-          <button onClick={addRow} className="w-full border-t border-slate-200 py-2 text-sm text-blue-600 hover:bg-slate-50">
+          <button onClick={addRow} className="w-full border-t border-slate-200 py-2 text-sm text-brand-accent hover:bg-slate-50">
             + Agregar fila
           </button>
         )}

@@ -46,8 +46,8 @@ export default function SharePanel({ timelineId, shares, onChange }: Props) {
   }
 
   return (
-    <div className="rounded border border-slate-200 bg-white p-4">
-      <h3 className="mb-3 text-sm font-medium text-slate-700">Compartir</h3>
+    <div className="rounded-xl border border-black/5 bg-white p-4 shadow-sm">
+      <h3 className="mb-3 text-sm font-medium text-brand-ink">Compartir</h3>
       <form onSubmit={addShare} className="mb-3 flex flex-wrap gap-2">
         <input
           type="text"
@@ -55,12 +55,12 @@ export default function SharePanel({ timelineId, shares, onChange }: Props) {
           placeholder="Email o nombre de usuario"
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
-          className="flex-1 rounded border border-slate-200 px-2 py-1.5 text-sm"
+          className="flex-1 rounded border border-slate-200 px-2 py-1.5 text-sm outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent"
         />
         <select
           value={permission}
           onChange={(e) => setPermission(e.target.value as "VIEW" | "EDIT")}
-          className="rounded border border-slate-200 px-2 py-1.5 text-sm"
+          className="rounded border border-slate-200 px-2 py-1.5 text-sm outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent"
         >
           <option value="VIEW">Puede ver</option>
           <option value="EDIT">Puede editar</option>
@@ -68,7 +68,7 @@ export default function SharePanel({ timelineId, shares, onChange }: Props) {
         <button
           type="submit"
           disabled={loading}
-          className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          className="rounded bg-brand-primary px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-primaryDark disabled:opacity-50"
         >
           Invitar
         </button>

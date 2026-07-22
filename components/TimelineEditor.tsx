@@ -9,6 +9,7 @@ import StylePanel from "@/components/StylePanel";
 import GroupsPanel from "@/components/GroupsPanel";
 import ExportButtons from "@/components/ExportButtons";
 import SharePanel, { ShareEntry } from "@/components/SharePanel";
+import Logo from "@/components/Logo";
 import { TimelineStyle } from "@/lib/palette";
 import type { AccessLevel } from "@/lib/permissions";
 
@@ -127,87 +128,93 @@ export default function TimelineEditor({
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <Link href="/" className="text-sm text-blue-600 hover:underline">
-          ← Volver
-        </Link>
-        {!isOwner && <span className="text-sm text-slate-500">Compartida por {ownerLabel}</span>}
-      </div>
+    <main className="min-h-screen bg-brand-surface">
+      <header className="border-b border-black/5 bg-white">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
+          <Logo />
+          <Link href="/" className="text-sm font-medium text-brand-accent hover:underline">
+            ← Volver
+          </Link>
+        </div>
+      </header>
 
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        {editable ? (
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full max-w-md rounded border border-slate-200 px-3 py-2 text-xl font-semibold"
+      <div className="mx-auto max-w-5xl px-4 py-8">
+        {!isOwner && <p className="mb-4 text-sm text-slate-500">Compartida por {ownerLabel}</p>}
+
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          {editable ? (
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full max-w-md rounded border border-slate-200 px-3 py-2 text-xl font-semibold text-brand-ink outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent"
+            />
+          ) : (
+            <h1 className="text-xl font-semibold text-brand-ink">{title}</h1>
+          )}
+
+          <div className="flex items-center gap-3">
+            {editable && (
+              <span className="text-xs text-slate-400">
+                {saving
+                  ? "Guardando..."
+                  : dirty
+                  ? "Cambios sin guardar"
+                  : savedAt
+                  ? `Guardado automáticamente ${savedAt.toLocaleTimeString()}`
+                  : "Sin cambios"}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="mb-6 overflow-x-auto rounded-xl border border-black/5 bg-white p-4 shadow-sm">
+          <TimelineChart ref={svgRef} items={items} style={style} />
+        </div>
+
+        <div className="mb-6">
+          <ExportButtons svgRef={svgRef} fileName={title || "linea-de-tiempo"} />
+        </div>
+
+        <div className="mb-6">
+          <h2 className="mb-2 text-sm font-medium text-brand-ink">Datos</h2>
+          <TimelineTable
+            items={items}
+            onChange={setItems}
+            editable={editable}
+            columns={style.columns}
+            onColumnsChange={(columns) => setStyle({ ...style, columns })}
+            groups={style.groups}
           />
-        ) : (
-          <h1 className="text-xl font-semibold">{title}</h1>
+        </div>
+
+        <div className="mb-6">
+          <GroupsPanel
+            groups={style.groups}
+            onChange={(groups) => setStyle({ ...style, groups })}
+            editable={editable}
+          />
+        </div>
+
+        <div className="mb-6">
+          <StylePanel style={style} onChange={setStyle} editable={editable} />
+        </div>
+
+        {isOwner && (
+          <div className="mb-6">
+            <SharePanel timelineId={timelineId} shares={shares} onChange={setShares} />
+          </div>
         )}
 
-        <div className="flex items-center gap-3">
-          {editable && (
-            <span className="text-xs text-slate-400">
-              {saving
-                ? "Guardando..."
-                : dirty
-                ? "Cambios sin guardar"
-                : savedAt
-                ? `Guardado automáticamente ${savedAt.toLocaleTimeString()}`
-                : "Sin cambios"}
-            </span>
-          )}
-        </div>
+        {isOwner && (
+          <button
+            onClick={deleteTimeline}
+            disabled={deleting}
+            className="text-sm text-red-600 hover:underline disabled:opacity-50"
+          >
+            {deleting ? "Eliminando..." : "Eliminar línea de tiempo"}
+          </button>
+        )}
       </div>
-
-      <div className="mb-6 overflow-x-auto rounded border border-slate-200 bg-white p-4">
-        <TimelineChart ref={svgRef} items={items} style={style} />
-      </div>
-
-      <div className="mb-6">
-        <ExportButtons svgRef={svgRef} fileName={title || "linea-de-tiempo"} />
-      </div>
-
-      <div className="mb-6">
-        <h2 className="mb-2 text-sm font-medium text-slate-700">Datos</h2>
-        <TimelineTable
-          items={items}
-          onChange={setItems}
-          editable={editable}
-          columns={style.columns}
-          onColumnsChange={(columns) => setStyle({ ...style, columns })}
-          groups={style.groups}
-        />
-      </div>
-
-      <div className="mb-6">
-        <GroupsPanel
-          groups={style.groups}
-          onChange={(groups) => setStyle({ ...style, groups })}
-          editable={editable}
-        />
-      </div>
-
-      <div className="mb-6">
-        <StylePanel style={style} onChange={setStyle} editable={editable} />
-      </div>
-
-      {isOwner && (
-        <div className="mb-6">
-          <SharePanel timelineId={timelineId} shares={shares} onChange={setShares} />
-        </div>
-      )}
-
-      {isOwner && (
-        <button
-          onClick={deleteTimeline}
-          disabled={deleting}
-          className="text-sm text-red-600 hover:underline disabled:opacity-50"
-        >
-          {deleting ? "Eliminando..." : "Eliminar línea de tiempo"}
-        </button>
-      )}
     </main>
   );
 }

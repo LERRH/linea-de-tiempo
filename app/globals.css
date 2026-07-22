@@ -8,6 +8,7 @@ body {
 }
 
 body {
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: #f5f5f5;
+  color: #2e2e2e;
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
 }

@@ -65,13 +65,13 @@ export default function ExportButtons({ svgRef, fileName }: Props) {
     <div className="flex gap-2">
       <button
         onClick={downloadSvg}
-        className="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100"
+        className="rounded border border-brand-primary px-3 py-1.5 text-sm text-brand-primary hover:bg-brand-primary/5"
       >
         Descargar SVG
       </button>
       <button
         onClick={downloadPng}
-        className="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100"
+        className="rounded bg-brand-primary px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-primaryDark"
       >
         Descargar PNG
       </button>
