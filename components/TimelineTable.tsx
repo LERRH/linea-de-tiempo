@@ -1,7 +1,9 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { ChartItem } from "@/components/TimelineChart";
 import { ColumnsConfig, TimelineGroup } from "@/lib/palette";
+import { downloadExcel, parseExcelFile, resolveImportedRows } from "@/lib/excel";
 
 interface Props {
   items: ChartItem[];
@@ -10,6 +12,8 @@ interface Props {
   columns: ColumnsConfig;
   onColumnsChange: (columns: ColumnsConfig) => void;
   groups: TimelineGroup[];
+  onGroupsChange: (groups: TimelineGroup[]) => void;
+  fileName: string;
 }
 
 const COLUMN_LABELS: { key: keyof ColumnsConfig; label: string }[] = [
@@ -18,8 +22,19 @@ const COLUMN_LABELS: { key: keyof ColumnsConfig; label: string }[] = [
   { key: "hito", label: "Hito" },
 ];
 
-export default function TimelineTable({ items, onChange, editable, columns, onColumnsChange, groups }: Props) {
+export default function TimelineTable({
+  items,
+  onChange,
+  editable,
+  columns,
+  onColumnsChange,
+  groups,
+  onGroupsChange,
+  fileName,
+}: Props) {
   const activeCount = Object.values(columns).filter(Boolean).length;
+  const [importError, setImportError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   function toggleColumn(key: keyof ColumnsConfig) {
     if (columns[key] && activeCount <= 1) return;
@@ -56,8 +71,62 @@ export default function TimelineTable({ items, onChange, editable, columns, onCo
     onChange(next);
   }
 
+  function exportExcel() {
+    downloadExcel(items, groups, fileName || "linea-de-tiempo");
+  }
+
+  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setImportError(null);
+    try {
+      const rows = await parseExcelFile(file);
+      if (rows.length === 0) {
+        setImportError("No se encontraron filas con datos en el archivo.");
+        return;
+      }
+      if (!confirm(`Se encontraron ${rows.length} fila(s). Esto reemplazará todos los datos actuales. ¿Continuar?`)) {
+        return;
+      }
+      const { items: newItems, groups: newGroups } = resolveImportedRows(rows, groups);
+      onChange(newItems);
+      if (newGroups.length !== groups.length) onGroupsChange(newGroups);
+    } catch {
+      setImportError("No se pudo leer el archivo. Verifica que sea un Excel (.xlsx) válido.");
+    }
+  }
+
   return (
     <div>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <button
+          onClick={exportExcel}
+          className="rounded border border-brand-primary px-3 py-1.5 text-sm text-brand-primary hover:bg-brand-primary/5"
+        >
+          Exportar a Excel
+        </button>
+        {editable && (
+          <>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="rounded border border-brand-accent px-3 py-1.5 text-sm text-brand-accent hover:bg-brand-accent/10"
+            >
+              Importar desde Excel
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              onChange={handleFileSelected}
+              className="hidden"
+            />
+          </>
+        )}
+      </div>
+      {importError && <p className="mb-3 text-sm text-red-600">{importError}</p>}
+
       {editable && (
         <div className="mb-2 flex flex-wrap items-center gap-4 text-sm text-slate-600">
           <span>Columnas:</span>

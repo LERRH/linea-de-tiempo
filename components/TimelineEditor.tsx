@@ -184,6 +184,8 @@ export default function TimelineEditor({
             columns={style.columns}
             onColumnsChange={(columns) => setStyle({ ...style, columns })}
             groups={style.groups}
+            onGroupsChange={(groups) => setStyle({ ...style, groups })}
+            fileName={title}
           />
         </div>
 
