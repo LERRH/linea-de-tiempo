@@ -323,7 +323,7 @@ const TimelineChart = forwardRef<SVGSVGElement, Props>(function TimelineChart({ 
               <tspan x={todayMarker.x} dy={0} fontWeight={700} fontSize={11}>
                 Hoy
               </tspan>
-              <tspan x={todayMarker.x} dy={MARKER_LINE_HEIGHT} fontWeight={600} fontSize={10}>
+              <tspan x={todayMarker.x} dy={MARKER_LINE_HEIGHT} fontWeight={600} fontSize={8}>
                 {todayMarker.dateLabel}
               </tspan>
             </text>
