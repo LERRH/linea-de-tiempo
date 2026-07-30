@@ -26,8 +26,9 @@ const TICK_LEN = 30;
 const TEXT_GAP = 10;
 const BOTTOM_MARGIN = 8;
 const DOT_R = 7;
-const MARKER_LINE_INSET = 14;
-const MARKER_LABEL_INSET = 11;
+const MARKER_LINE_HEIGHT = 15;
+const MARKER_LINES = 2; // "Hoy" + the date below it
+const MIN_MARKER_GAP_PX = 18; // keeps the marker from visually sitting on top of a nearby milestone dot
 const LEGEND_ROW_HEIGHT = 26;
 const LEGEND_SWATCH = 14;
 const LEGEND_FONT_SIZE = 12;
@@ -132,7 +133,9 @@ const TimelineChart = forwardRef<SVGSVGElement, Props>(function TimelineChart({ 
   // Every point reserves the same vertical space (above and below its row's
   // line) so no label — however long — gets clipped by the SVG canvas.
   const maxLines = Math.max(1, ...sorted.map((item) => buildLineDescs(item).length));
-  const halfRowHeight = TICK_LEN + TEXT_GAP + maxLines * lineHeight + BOTTOM_MARGIN;
+  const itemHalfRowHeight = TICK_LEN + TEXT_GAP + maxLines * lineHeight + BOTTOM_MARGIN;
+  const markerHalfRowHeight = TICK_LEN + TEXT_GAP + MARKER_LINES * MARKER_LINE_HEIGHT + BOTTOM_MARGIN;
+  const halfRowHeight = Math.max(itemHalfRowHeight, style.showTodayMarker ? markerHalfRowHeight : 0);
   const rowLineY = halfRowHeight;
   const rowHeight = halfRowHeight * 2;
 
@@ -243,18 +246,42 @@ const TimelineChart = forwardRef<SVGSVGElement, Props>(function TimelineChart({ 
     return n - 1;
   }
 
-  let todayMarker: { x: number; lineY: number } | null = null;
+  let todayMarker: { x: number; lineY: number; dateLabel: string } | null = null;
   if (style.showTodayMarker) {
     const now = new Date();
     const todayISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
       now.getDate()
     ).padStart(2, "0")}`;
+    const exactMatch = sorted.some((item) => item.date === todayISO);
     const gi = globalFractionalIndex(todayISO);
+
+    let localIndex: number;
+    let rowCountForRow: number;
+    let lineYForRow: number;
     if (useTwoRows && gi > rowSplit - 1) {
-      todayMarker = { x: xFor(gi - rowSplit, row2.length), lineY: row2LineY };
+      localIndex = gi - rowSplit;
+      rowCountForRow = row2.length;
+      lineYForRow = row2LineY;
     } else {
-      todayMarker = { x: xFor(gi, row1.length), lineY: row1LineY };
+      localIndex = gi;
+      rowCountForRow = row1.length;
+      lineYForRow = row1LineY;
     }
+
+    // Unless today IS a milestone's exact date, keep the marker from visually
+    // landing on top of a nearby dot — that reads as "same day" when it isn't.
+    if (!exactMatch && rowCountForRow > 1 && spacing > 0) {
+      const minFrac = Math.min(0.45, MIN_MARKER_GAP_PX / spacing);
+      const nearest = Math.round(localIndex);
+      const diff = localIndex - nearest;
+      let direction = diff >= 0 ? 1 : -1;
+      if (diff === 0) direction = nearest === rowCountForRow - 1 ? -1 : 1;
+      if (Math.abs(diff) < minFrac) {
+        localIndex = Math.max(0, Math.min(rowCountForRow - 1, nearest + direction * minFrac));
+      }
+    }
+
+    todayMarker = { x: xFor(localIndex, rowCountForRow), lineY: lineYForRow, dateLabel: formatDate(now) };
   }
 
   const legendTop = chartHeight + 12;
@@ -274,37 +301,35 @@ const TimelineChart = forwardRef<SVGSVGElement, Props>(function TimelineChart({ 
         />
       )}
       {useTwoRows && renderRow(row2, row2LineY, row1.length)}
-      {todayMarker && (
-        <g>
-          <line
-            x1={todayMarker.x}
-            y1={todayMarker.lineY}
-            x2={todayMarker.x}
-            y2={
-              style.todayMarkerPosition === "top"
-                ? todayMarker.lineY - halfRowHeight + MARKER_LINE_INSET
-                : todayMarker.lineY + halfRowHeight - MARKER_LINE_INSET
-            }
-            stroke={style.todayMarkerColor}
-            strokeWidth={2}
-            strokeDasharray="6 4"
-          />
-          <text
-            x={todayMarker.x}
-            y={
-              style.todayMarkerPosition === "top"
-                ? todayMarker.lineY - halfRowHeight + MARKER_LABEL_INSET
-                : todayMarker.lineY + halfRowHeight - MARKER_LABEL_INSET
-            }
-            textAnchor="middle"
-            fontSize={11}
-            fontWeight={700}
-            fill={style.todayMarkerColor}
-          >
-            Hoy
-          </text>
-        </g>
-      )}
+      {todayMarker && (() => {
+        const isTop = style.todayMarkerPosition === "top";
+        const tickEnd = isTop ? todayMarker.lineY - TICK_LEN : todayMarker.lineY + TICK_LEN;
+        const totalTextHeight = MARKER_LINES * MARKER_LINE_HEIGHT;
+        const firstLineY = isTop
+          ? tickEnd - TEXT_GAP - (totalTextHeight - MARKER_LINE_HEIGHT)
+          : tickEnd + TEXT_GAP + MARKER_LINE_HEIGHT;
+        return (
+          <g>
+            <line
+              x1={todayMarker.x}
+              y1={todayMarker.lineY}
+              x2={todayMarker.x}
+              y2={tickEnd}
+              stroke={style.todayMarkerColor}
+              strokeWidth={2}
+              strokeDasharray="6 4"
+            />
+            <text x={todayMarker.x} y={firstLineY} textAnchor="middle" fill={style.todayMarkerColor}>
+              <tspan x={todayMarker.x} dy={0} fontWeight={700} fontSize={11}>
+                Hoy
+              </tspan>
+              <tspan x={todayMarker.x} dy={MARKER_LINE_HEIGHT} fontWeight={600} fontSize={10}>
+                {todayMarker.dateLabel}
+              </tspan>
+            </text>
+          </g>
+        );
+      })()}
       {legendRows.map((row, rowIndex) => {
         const rowWidth = row.reduce(
           (sum, g) => sum + LEGEND_SWATCH + 6 + g.name.length * (LEGEND_FONT_SIZE * 0.62) + 24,
