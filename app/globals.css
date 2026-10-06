@@ -19,6 +19,7 @@
   --line: #cbd5e1;
   --shadow: 0 8px 30px rgba(15, 23, 42, 0.055);
   --r: 12px;
+  --editor-max: 1360px;
 }
 
 html {
@@ -690,7 +691,8 @@ a {
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
-    padding: 0 22px;
+    /* Line the bar's content up with the centered .editor-grid below it. */
+    padding: 0 max(22px, calc((100% - var(--editor-max)) / 2 + 14px));
     gap: 16px;
     position: sticky;
     top: 0;
@@ -720,6 +722,8 @@ a {
     white-space: nowrap;
   }
   .editor-grid {
+    max-width: var(--editor-max);
+    margin: 0 auto;
     display: grid;
     grid-template-columns: minmax(0, 1fr) 300px;
     gap: 14px;
@@ -745,6 +749,10 @@ a {
   }
   .chart-scroll {
     overflow-x: auto;
+  }
+  .chart-scroll > svg {
+    display: block;
+    margin: 0 auto;
   }
   .table-tools {
     display: flex;
