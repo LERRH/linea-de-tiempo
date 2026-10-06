@@ -14,10 +14,54 @@ interface Props {
   fileName: string;
 }
 
+// Date math in UTC so daylight-saving shifts never turn N days into N±1.
+function utcMs(isoDate: string): number {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  return Date.UTC(y, m - 1, d);
+}
+
 function daysBetween(from: string, to: string): number | null {
   if (!from || !to) return null;
-  return Math.round(
-    (new Date(to + "T00:00:00").getTime() - new Date(from + "T00:00:00").getTime()) / 86400000
+  return Math.round((utcMs(to) - utcMs(from)) / 86400000);
+}
+
+function addDays(isoDate: string, days: number): string {
+  return new Date(utcMs(isoDate) + days * 86400000).toISOString().slice(0, 10);
+}
+
+/**
+ * Days since the previous milestone. Keeps its own draft so the field can be
+ * cleared while typing; only whole, non-negative numbers are committed.
+ */
+function DaysInput({
+  days,
+  disabled,
+  label,
+  onCommit,
+}: {
+  days: number | null;
+  disabled: boolean;
+  label: string;
+  onCommit: (days: number) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <input
+      type="number"
+      min={0}
+      step={1}
+      className={`cell-input days-input ${days !== null && days < 0 ? "text-red-600" : ""}`}
+      aria-label={label}
+      title="Días desde el hito anterior"
+      disabled={disabled}
+      value={draft ?? (days ?? "")}
+      onChange={(e) => {
+        setDraft(e.target.value);
+        const n = Number(e.target.value);
+        if (e.target.value !== "" && Number.isInteger(n) && n >= 0) onCommit(n);
+      }}
+      onBlur={() => setDraft(null)}
+    />
   );
 }
 
@@ -35,6 +79,22 @@ export default function TimelineTable({
   function update(index: number, patch: Partial<ChartItem>) {
     const next = items.map((item, i) => (i === index ? { ...item, ...patch } : item));
     onChange(next);
+  }
+
+  /**
+   * Moves milestone `index` to `newDate` and shifts every later milestone by
+   * the same amount, so the days between milestones stay the same.
+   */
+  function setDate(index: number, newDate: string) {
+    const oldDate = items[index].date;
+    const delta = oldDate && newDate ? daysBetween(oldDate, newDate) : null;
+    onChange(
+      items.map((item, i) => {
+        if (i === index) return { ...item, date: newDate };
+        if (i > index && delta && item.date) return { ...item, date: addDays(item.date, delta) };
+        return item;
+      })
+    );
   }
 
   function addRow() {
@@ -125,10 +185,10 @@ export default function TimelineTable({
             <tr>
               <th>#</th>
               <th>Fecha</th>
+              <th title="Días desde el hito anterior">Días</th>
               <th>Encabezado</th>
               <th>Hito / Descripción</th>
               <th>Grupo</th>
-              <th title="Días desde el hito anterior">Días</th>
               {editable && <th aria-label="Acciones" />}
             </tr>
           </thead>
@@ -154,8 +214,20 @@ export default function TimelineTable({
                       aria-label={`Fecha del hito ${i + 1}`}
                       value={item.date}
                       disabled={!editable}
-                      onChange={(e) => update(i, { date: e.target.value })}
+                      onChange={(e) => setDate(i, e.target.value)}
                     />
+                  </td>
+                  <td>
+                    {i === 0 ? (
+                      <span className="muted px-2">—</span>
+                    ) : (
+                      <DaysInput
+                        days={days}
+                        disabled={!editable || !items[i - 1].date}
+                        label={`Días desde el hito ${i} al hito ${i + 1}`}
+                        onCommit={(n) => setDate(i, addDays(items[i - 1].date, n))}
+                      />
+                    )}
                   </td>
                   <td>
                     <input
@@ -198,7 +270,6 @@ export default function TimelineTable({
                       </select>
                     </span>
                   </td>
-                  <td className={days !== null && days < 0 ? "text-red-600" : "muted"}>{days ?? "—"}</td>
                   {editable && (
                     <td>
                       <button

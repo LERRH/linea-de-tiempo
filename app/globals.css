@@ -653,6 +653,10 @@ a {
   .cell-input:disabled {
     cursor: default;
   }
+  .days-input {
+    width: 72px;
+    min-width: 72px;
+  }
   .badge {
     padding: 4px 8px;
     border-radius: 99px;
