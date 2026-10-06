@@ -31,47 +31,49 @@ export default function GroupsPanel({ groups, onChange, editable }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-black/5 bg-white p-4 shadow-sm">
-      <h3 className="mb-3 text-sm font-medium text-brand-ink">Grupos (leyenda por colores)</h3>
+    <div className="panel-section">
+      <h3>Grupos (leyenda por colores)</h3>
 
       {groups.length === 0 && (
-        <p className="mb-3 text-sm text-slate-500">
-          Aún no has creado grupos. Crea uno para poder asignarle un color a cada hito y mostrar una leyenda.
+        <p className="small muted mb-3">
+          Aún no hay grupos. Crea uno para asignar un color a cada hito y mostrar una leyenda.
         </p>
       )}
 
-      <div className="mb-3 flex flex-col gap-2">
-        {groups.map((group) => (
-          <div key={group.id} className="flex items-center gap-2">
-            <input
-              type="color"
-              value={group.color}
-              disabled={!editable}
-              onChange={(e) => updateGroup(group.id, { color: e.target.value })}
-              className="h-8 w-12 rounded border border-slate-200"
-            />
-            <input
-              type="text"
-              value={group.name}
-              disabled={!editable}
-              onChange={(e) => updateGroup(group.id, { name: e.target.value })}
-              className="flex-1 rounded border border-slate-200 px-2 py-1 text-sm outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent disabled:bg-slate-50"
-            />
-            {editable && (
-              <button onClick={() => removeGroup(group.id)} className="text-sm text-slate-400 hover:text-red-600">
-                Quitar
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
+      {groups.map((group) => (
+        <div key={group.id} className="group-row">
+          <input
+            className="input"
+            type="color"
+            value={group.color}
+            disabled={!editable}
+            aria-label={`Color de ${group.name}`}
+            onChange={(e) => updateGroup(group.id, { color: e.target.value })}
+          />
+          <input
+            className="input input-sm"
+            type="text"
+            value={group.name}
+            disabled={!editable}
+            aria-label="Nombre del grupo"
+            onChange={(e) => updateGroup(group.id, { name: e.target.value })}
+          />
+          {editable && (
+            <button
+              className="icon-btn danger"
+              onClick={() => removeGroup(group.id)}
+              title="Quitar grupo"
+              aria-label={`Quitar ${group.name}`}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      ))}
 
       {editable && (
-        <button
-          onClick={addGroup}
-          className="rounded border border-brand-accent px-3 py-1.5 text-sm text-brand-accent hover:bg-brand-accent/10"
-        >
-          + Agregar grupo
+        <button className="btn btn-outline btn-sm mt-2 w-full" onClick={addGroup}>
+          ＋ Agregar grupo
         </button>
       )}
     </div>

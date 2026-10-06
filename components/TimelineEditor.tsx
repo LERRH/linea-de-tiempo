@@ -13,6 +13,8 @@ import Logo from "@/components/Logo";
 import { TimelineStyle } from "@/lib/palette";
 import type { AccessLevel } from "@/lib/permissions";
 
+type PanelTab = "estilos" | "grupos" | "compartir";
+
 interface Props {
   timelineId: string;
   initialTitle: string;
@@ -44,6 +46,7 @@ export default function TimelineEditor({
   const [dirty, setDirty] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [panelTab, setPanelTab] = useState<PanelTab>("estilos");
 
   const svgRef = useRef<SVGSVGElement>(null);
   const isFirstRender = useRef(true);
@@ -127,100 +130,117 @@ export default function TimelineEditor({
     router.push("/");
   }
 
+  const tabs: { id: PanelTab; label: string }[] = [
+    ...(editable ? [{ id: "estilos" as const, label: "Estilos" }] : []),
+    { id: "grupos", label: "Grupos" },
+    ...(isOwner ? [{ id: "compartir" as const, label: "Compartir" }] : []),
+  ];
+  const activeTab = tabs.some((t) => t.id === panelTab) ? panelTab : tabs[0].id;
+
+  const saveLabel = saving
+    ? "Guardando…"
+    : dirty
+    ? "Cambios sin guardar"
+    : savedAt
+    ? `✓ Guardado ${savedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+    : "✓ Todo guardado";
+
   return (
-    <main className="min-h-screen bg-brand-surface">
-      <header className="border-b border-black/5 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-          <Logo />
-          <Link href="/" className="text-sm font-medium text-brand-accent hover:underline">
-            ← Volver
-          </Link>
-        </div>
+    <div className="editor">
+      <header className="editor-top">
+        <Logo />
+        <Link href="/" className="small whitespace-nowrap">
+          ‹ Volver
+        </Link>
+        {editable ? (
+          <input
+            className="title-edit"
+            aria-label="Título de la línea de tiempo"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        ) : (
+          <strong className="truncate">{title}</strong>
+        )}
+        <div className="top-spacer" />
+        {editable ? (
+          <span className="saved" aria-live="polite">
+            {saveLabel}
+          </span>
+        ) : (
+          <span className="saved">Solo lectura · compartida por {ownerLabel}</span>
+        )}
+        {isOwner && (
+          <button className="btn btn-outline share-btn" onClick={() => setPanelTab("compartir")}>
+            Compartir
+          </button>
+        )}
+        <ExportButtons svgRef={svgRef} fileName={title || "linea-de-tiempo"} title={title || "Línea de tiempo"} />
       </header>
 
-      <div className="mx-auto max-w-5xl px-4 py-8">
-        {!isOwner && <p className="mb-4 text-sm text-slate-500">Compartida por {ownerLabel}</p>}
+      <div className="editor-grid">
+        <main className="workspace">
+          <section className="chart-card card">
+            <div className="chart-head">
+              <div>
+                <h1>{title || "Línea de tiempo"}</h1>
+                <span className="muted">
+                  Línea de tiempo del proyecto · {items.length} {items.length === 1 ? "hito" : "hitos"}
+                  {!isOwner && ` · de ${ownerLabel}`}
+                </span>
+              </div>
+            </div>
+            <div className="chart-scroll">
+              <TimelineChart ref={svgRef} items={items} style={style} />
+            </div>
+          </section>
 
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          {editable ? (
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full max-w-md rounded border border-slate-200 px-3 py-2 text-xl font-semibold text-brand-ink outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent"
-            />
-          ) : (
-            <h1 className="text-xl font-semibold text-brand-ink">{title}</h1>
-          )}
-
-          <div className="flex items-center gap-3">
-            {editable && (
-              <span className="text-xs text-slate-400">
-                {saving
-                  ? "Guardando..."
-                  : dirty
-                  ? "Cambios sin guardar"
-                  : savedAt
-                  ? `Guardado automáticamente ${savedAt.toLocaleTimeString()}`
-                  : "Sin cambios"}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="mb-6 overflow-x-auto rounded-xl border border-black/5 bg-white p-4 shadow-sm">
-          <TimelineChart ref={svgRef} items={items} style={style} />
-        </div>
-
-        <div className="mb-6">
-          <ExportButtons
-            svgRef={svgRef}
-            fileName={title || "linea-de-tiempo"}
-            title={title || "Línea de tiempo"}
-          />
-        </div>
-
-        <div className="mb-6">
-          <h2 className="mb-2 text-sm font-medium text-brand-ink">Datos</h2>
           <TimelineTable
             items={items}
             onChange={setItems}
             editable={editable}
-            columns={style.columns}
-            onColumnsChange={(columns) => setStyle({ ...style, columns })}
             groups={style.groups}
             onGroupsChange={(groups) => setStyle({ ...style, groups })}
             fileName={title}
           />
-        </div>
+        </main>
 
-        <div className="mb-6">
-          <GroupsPanel
-            groups={style.groups}
-            onChange={(groups) => setStyle({ ...style, groups })}
-            editable={editable}
-          />
-        </div>
-
-        <div className="mb-6">
-          <StylePanel style={style} onChange={setStyle} editable={editable} />
-        </div>
-
-        {isOwner && (
-          <div className="mb-6">
-            <SharePanel timelineId={timelineId} shares={shares} onChange={setShares} />
+        <aside className="sidepanel card">
+          <div className="panel-tabs" role="tablist" style={{ "--tabs": tabs.length } as React.CSSProperties}>
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                role="tab"
+                aria-selected={activeTab === t.id}
+                className={activeTab === t.id ? "active" : ""}
+                onClick={() => setPanelTab(t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
-        )}
 
-        {isOwner && (
-          <button
-            onClick={deleteTimeline}
-            disabled={deleting}
-            className="text-sm text-red-600 hover:underline disabled:opacity-50"
-          >
-            {deleting ? "Eliminando..." : "Eliminar línea de tiempo"}
-          </button>
-        )}
+          {activeTab === "estilos" && editable && <StylePanel style={style} onChange={setStyle} />}
+          {activeTab === "grupos" && (
+            <GroupsPanel
+              groups={style.groups}
+              onChange={(groups) => setStyle({ ...style, groups })}
+              editable={editable}
+            />
+          )}
+          {activeTab === "compartir" && isOwner && (
+            <SharePanel timelineId={timelineId} shares={shares} onChange={setShares} />
+          )}
+
+          {isOwner && (
+            <div className="panel-section">
+              <button className="btn btn-danger btn-sm w-full" onClick={deleteTimeline} disabled={deleting}>
+                {deleting ? "Eliminando…" : "Eliminar línea de tiempo"}
+              </button>
+            </div>
+          )}
+        </aside>
       </div>
-    </main>
+    </div>
   );
 }

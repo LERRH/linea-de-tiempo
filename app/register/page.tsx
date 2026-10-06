@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import Logo from "@/components/Logo";
+import AuthCard from "@/components/AuthCard";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -43,52 +42,52 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-brand-surface px-4">
-      <Logo className="mb-8" />
-      <div className="w-full max-w-sm rounded-xl border border-black/5 bg-white p-8 shadow-sm">
-        <h1 className="mb-6 text-xl font-semibold text-brand-ink">Crear cuenta</h1>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <AuthCard mode="register">
+      <form onSubmit={handleSubmit}>
+        <div className="field">
+          <label htmlFor="name">Nombre de usuario</label>
           <input
+            id="name"
+            className="input"
             type="text"
-            placeholder="Nombre de usuario"
+            autoComplete="username"
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="rounded border border-slate-300 px-3 py-2 outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent"
           />
+        </div>
+        <div className="field">
+          <label htmlFor="email">Correo electrónico</label>
           <input
+            id="email"
+            className="input"
             type="email"
-            placeholder="Email"
+            placeholder="nombre@empresa.com"
+            autoComplete="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="rounded border border-slate-300 px-3 py-2 outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent"
           />
+        </div>
+        <div className="field">
+          <label htmlFor="password">Contraseña</label>
           <input
+            id="password"
+            className="input"
             type="password"
-            placeholder="Contraseña (mínimo 6 caracteres)"
+            placeholder="Mínimo 6 caracteres"
+            autoComplete="new-password"
             required
             minLength={6}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="rounded border border-slate-300 px-3 py-2 outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent"
           />
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className="rounded bg-brand-primary px-3 py-2 font-medium text-white transition-colors hover:bg-brand-primaryDark disabled:opacity-50"
-          >
-            {loading ? "Creando..." : "Crear cuenta"}
-          </button>
-        </form>
-        <p className="mt-4 text-sm text-slate-600">
-          ¿Ya tienes cuenta?{" "}
-          <Link href="/login" className="font-medium text-brand-accent hover:underline">
-            Inicia sesión
-          </Link>
-        </p>
-      </div>
-    </main>
+        </div>
+        {error && <p className="error mb-4">{error}</p>}
+        <button type="submit" disabled={loading} className="btn btn-primary">
+          {loading ? "Creando..." : "Crear cuenta"}
+        </button>
+      </form>
+    </AuthCard>
   );
 }

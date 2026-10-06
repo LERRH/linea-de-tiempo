@@ -1,6 +1,6 @@
 "use client";
 
-import { RefObject, useState } from "react";
+import { RefObject, useEffect, useRef, useState } from "react";
 import { downloadPptx, serializeSvg, svgToPngBlob, triggerDownload } from "@/lib/pptx-export";
 
 interface Props {
@@ -9,58 +9,89 @@ interface Props {
   title: string;
 }
 
+/** "Exportar ▾" dropdown: SVG, PNG and editable PowerPoint. */
 export default function ExportButtons({ svgRef, fileName, title }: Props) {
+  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
-  function downloadSvg() {
-    const svg = svgRef.current;
-    if (!svg) return;
-    const blob = new Blob([serializeSvg(svg)], { type: "image/svg+xml;charset=utf-8" });
-    triggerDownload(blob, `${fileName}.svg`);
-  }
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(e: PointerEvent) {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
 
-  async function downloadPng() {
-    const svg = svgRef.current;
-    if (!svg) return;
-    triggerDownload(await svgToPngBlob(svg), `${fileName}.png`);
-  }
-
-  async function downloadPowerPoint() {
+  async function run(action: (svg: SVGSVGElement) => Promise<void> | void, label: string) {
     const svg = svgRef.current;
     if (!svg || busy) return;
+    setOpen(false);
     setBusy(true);
     setError(null);
     try {
-      await downloadPptx(svg, title, fileName);
+      await action(svg);
     } catch (err) {
       console.error(err);
-      setError("No se pudo generar el archivo PowerPoint.");
+      setError(`No se pudo generar el archivo ${label}.`);
     } finally {
       setBusy(false);
     }
   }
 
-  const outline =
-    "rounded border border-brand-primary px-3 py-1.5 text-sm text-brand-primary hover:bg-brand-primary/5 disabled:opacity-50";
-
   return (
-    <div>
-      <div className="flex flex-wrap gap-2">
-        <button onClick={downloadSvg} className={outline}>
-          Descargar SVG
-        </button>
-        <button
-          onClick={downloadPng}
-          className="rounded bg-brand-primary px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-primaryDark"
-        >
-          Descargar PNG
-        </button>
-        <button onClick={downloadPowerPoint} disabled={busy} className={outline}>
-          {busy ? "Generando…" : "Descargar PowerPoint"}
-        </button>
-      </div>
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+    <div className="dropdown" ref={rootRef}>
+      <button
+        className="btn btn-primary"
+        onClick={() => setOpen((o) => !o)}
+        disabled={busy}
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        {busy ? "Generando…" : "Exportar ▾"}
+      </button>
+      {open && (
+        <div className="dropdown-menu card" role="menu">
+          <button role="menuitem" onClick={() => run((svg) => downloadPptx(svg, title, fileName), "PowerPoint")}>
+            PowerPoint (editable)
+          </button>
+          <button
+            role="menuitem"
+            onClick={() => run(async (svg) => triggerDownload(await svgToPngBlob(svg), `${fileName}.png`), "PNG")}
+          >
+            Imagen PNG
+          </button>
+          <button
+            role="menuitem"
+            onClick={() =>
+              run(
+                (svg) =>
+                  triggerDownload(
+                    new Blob([serializeSvg(svg)], { type: "image/svg+xml;charset=utf-8" }),
+                    `${fileName}.svg`
+                  ),
+                "SVG"
+              )
+            }
+          >
+            Vector SVG
+          </button>
+        </div>
+      )}
+      {error && (
+        <div className="dropdown-menu error" role="alert" onClick={() => setError(null)}>
+          {error}
+        </div>
+      )}
     </div>
   );
 }

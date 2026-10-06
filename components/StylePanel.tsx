@@ -1,126 +1,160 @@
 "use client";
 
-import { FONT_OPTIONS, TimelineStyle } from "@/lib/palette";
+import { ColumnsConfig, FONT_OPTIONS, TimelineStyle } from "@/lib/palette";
 
 interface Props {
   style: TimelineStyle;
   onChange: (style: TimelineStyle) => void;
-  editable: boolean;
 }
 
-const LABEL = "mb-1 block text-xs font-medium text-slate-500";
-const CONTROL =
-  "w-full rounded border border-slate-200 px-2 py-1.5 text-sm outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent";
-const SECTION_TITLE = "mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400";
+function ToggleRow({
+  label,
+  checked,
+  onChange,
+  disabled = false,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="toggle-row">
+      <span>{label}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        className="toggle"
+        disabled={disabled}
+        onClick={() => onChange(!checked)}
+      />
+    </div>
+  );
+}
 
-export default function StylePanel({ style, onChange, editable }: Props) {
-  if (!editable) return null;
+const COLUMN_TOGGLES: { key: keyof ColumnsConfig; label: string }[] = [
+  { key: "fecha", label: "Mostrar fechas" },
+  { key: "encabezado", label: "Mostrar encabezados" },
+  { key: "hito", label: "Mostrar descripciones" },
+];
+
+export default function StylePanel({ style, onChange }: Props) {
+  const activeColumns = Object.values(style.columns).filter(Boolean).length;
 
   return (
-    <div className="rounded-xl border border-black/5 bg-white p-4 shadow-sm">
-      <h3 className="mb-4 text-sm font-medium text-brand-ink">Estilo</h3>
-
-      <div>
-        <p className={SECTION_TITLE}>Texto y diseño</p>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <label>
-            <span className={LABEL}>Fuente</span>
-            <select
-              value={style.fontFamily}
-              onChange={(e) => onChange({ ...style, fontFamily: e.target.value })}
-              className={CONTROL}
-            >
-              {FONT_OPTIONS.map((f) => (
-                <option key={f.value} value={f.value}>
-                  {f.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            <span className={LABEL}>Tamaño de letra</span>
-            <input
-              type="number"
-              min={10}
-              max={24}
-              value={style.fontSizePx}
-              onChange={(e) => onChange({ ...style, fontSizePx: Number(e.target.value) })}
-              className={CONTROL}
-            />
-          </label>
-
-          <label>
-            <span className={LABEL}>Distribución</span>
-            <select
-              value={style.rows}
-              onChange={(e) => onChange({ ...style, rows: Number(e.target.value) === 2 ? 2 : 1 })}
-              className={CONTROL}
-            >
-              <option value={1}>Una línea</option>
-              <option value={2}>Dos líneas</option>
-            </select>
-          </label>
-
-          <label>
-            <span className={LABEL}>Color por defecto</span>
-            <input
-              type="color"
-              value={style.defaultColor}
-              onChange={(e) => onChange({ ...style, defaultColor: e.target.value })}
-              className="h-9 w-full rounded border border-slate-200"
-            />
-          </label>
-        </div>
-      </div>
-
-      <div className="mt-5 border-t border-slate-100 pt-4">
-        <p className={SECTION_TITLE}>Marcadores opcionales</p>
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-2 text-sm text-brand-ink">
-              <input
-                type="checkbox"
-                checked={style.showTodayMarker}
-                onChange={(e) => onChange({ ...style, showTodayMarker: e.target.checked })}
-                className="accent-brand-accent"
-              />
-              Marca de fecha actual
-            </label>
-            {style.showTodayMarker && (
-              <>
+    <>
+      <div className="panel-section">
+        <h3>Vista general</h3>
+        <div className="radio-row">
+          <span>Disposición</span>
+          <span>
+            {([1, 2] as const).map((rows) => (
+              <label key={rows}>
                 <input
-                  type="color"
-                  value={style.todayMarkerColor}
-                  onChange={(e) => onChange({ ...style, todayMarkerColor: e.target.value })}
-                  className="h-7 w-12 rounded border border-slate-200"
-                  title="Color de la marca"
+                  type="radio"
+                  name="rows"
+                  checked={style.rows === rows}
+                  onChange={() => onChange({ ...style, rows })}
                 />
-                <select
-                  value={style.todayMarkerPosition}
-                  onChange={(e) =>
-                    onChange({ ...style, todayMarkerPosition: e.target.value === "top" ? "top" : "bottom" })
-                  }
-                  className="rounded border border-slate-200 px-2 py-1 text-sm outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent"
-                >
-                  <option value="bottom">Abajo</option>
-                  <option value="top">Arriba</option>
-                </select>
-              </>
-            )}
-          </div>
+                {rows === 1 ? "1 fila" : "2 filas"}
+              </label>
+            ))}
+          </span>
+        </div>
 
-          <label className="flex items-center gap-2 text-sm text-brand-ink">
+        <ToggleRow
+          label="Mostrar marcador “Hoy”"
+          checked={style.showTodayMarker}
+          onChange={(showTodayMarker) => onChange({ ...style, showTodayMarker })}
+        />
+        {style.showTodayMarker && (
+          <div className="sub-options">
+            <select
+              className="input input-sm"
+              aria-label="Posición del marcador Hoy"
+              value={style.todayMarkerPosition}
+              onChange={(e) =>
+                onChange({ ...style, todayMarkerPosition: e.target.value === "top" ? "top" : "bottom" })
+              }
+            >
+              <option value="bottom">Abajo</option>
+              <option value="top">Arriba</option>
+            </select>
             <input
-              type="checkbox"
-              checked={style.showDaysBetween}
-              onChange={(e) => onChange({ ...style, showDaysBetween: e.target.checked })}
-              className="accent-brand-accent"
+              className="input input-sm"
+              type="color"
+              aria-label="Color del marcador Hoy"
+              title="Color del marcador"
+              value={style.todayMarkerColor}
+              onChange={(e) => onChange({ ...style, todayMarkerColor: e.target.value })}
             />
-            Días entre hitos
-          </label>
+          </div>
+        )}
+
+        <ToggleRow
+          label="Mostrar días entre hitos"
+          checked={style.showDaysBetween}
+          onChange={(showDaysBetween) => onChange({ ...style, showDaysBetween })}
+        />
+
+        {COLUMN_TOGGLES.map(({ key, label }) => (
+          <ToggleRow
+            key={key}
+            label={label}
+            checked={style.columns[key]}
+            // Keep at least one text line per milestone.
+            disabled={style.columns[key] && activeColumns <= 1}
+            onChange={(checked) => onChange({ ...style, columns: { ...style.columns, [key]: checked } })}
+          />
+        ))}
+      </div>
+
+      <div className="panel-section">
+        <h3>Estilo</h3>
+        <div className="field">
+          <label htmlFor="style-font">Fuente</label>
+          <select
+            id="style-font"
+            className="input"
+            value={style.fontFamily}
+            onChange={(e) => onChange({ ...style, fontFamily: e.target.value })}
+          >
+            {FONT_OPTIONS.map((f) => (
+              <option key={f.value} value={f.value}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="style-size">Tamaño del texto (px)</label>
+          <input
+            id="style-size"
+            className="input"
+            type="number"
+            min={10}
+            max={24}
+            value={style.fontSizePx}
+            onChange={(e) => onChange({ ...style, fontSizePx: Number(e.target.value) })}
+          />
         </div>
       </div>
-    </div>
+
+      <div className="panel-section">
+        <h3>Colores</h3>
+        <div className="field">
+          <label htmlFor="style-color">Color de hitos sin grupo</label>
+          <input
+            id="style-color"
+            className="input"
+            type="color"
+            value={style.defaultColor}
+            onChange={(e) => onChange({ ...style, defaultColor: e.target.value })}
+          />
+        </div>
+      </div>
+    </>
   );
 }

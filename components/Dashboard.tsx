@@ -10,6 +10,7 @@ interface OwnedTimeline {
   id: string;
   title: string;
   updatedAt: string;
+  _count: { items: number };
 }
 
 interface SharedTimeline extends OwnedTimeline {
@@ -17,12 +18,42 @@ interface SharedTimeline extends OwnedTimeline {
   shares: { permission: "VIEW" | "EDIT" }[];
 }
 
-export default function Dashboard({ userEmail }: { userEmail: string }) {
+type View = "inicio" | "mias" | "compartidas";
+
+const MENU: { view: View; icon: string; label: string }[] = [
+  { view: "inicio", icon: "⌂", label: "Inicio" },
+  { view: "mias", icon: "☷", label: "Mis líneas de tiempo" },
+  { view: "compartidas", icon: "♧", label: "Compartidas conmigo" },
+];
+
+const MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+function formatEdited(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const time = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  if (d.toDateString() === now.toDateString()) return `Hoy ${time}`;
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function initials(label: string): string {
+  const parts = label.split(/[\s@._-]+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
+}
+
+function milestoneCount(n: number): string {
+  return `${n} ${n === 1 ? "hito" : "hitos"}`;
+}
+
+export default function Dashboard({ userEmail, userName }: { userEmail: string; userName: string }) {
   const router = useRouter();
   const [owned, setOwned] = useState<OwnedTimeline[]>([]);
   const [shared, setShared] = useState<SharedTimeline[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [view, setView] = useState<View>("inicio");
+  const [query, setQuery] = useState("");
 
   async function load() {
     setLoading(true);
@@ -31,6 +62,9 @@ export default function Dashboard({ userEmail }: { userEmail: string }) {
       const data = await res.json();
       setOwned(data.owned);
       setShared(data.shared);
+      setError(null);
+    } else {
+      setError("No se pudieron cargar tus líneas de tiempo. Recarga la página para intentarlo de nuevo.");
     }
     setLoading(false);
   }
@@ -47,89 +81,185 @@ export default function Dashboard({ userEmail }: { userEmail: string }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: "Nueva línea de tiempo" }),
     });
+    if (!res.ok) {
+      setCreating(false);
+      setError("No se pudo crear la línea de tiempo.");
+      return;
+    }
     const timeline = await res.json();
-    setCreating(false);
     router.push(`/timelines/${timeline.id}`);
   }
 
-  return (
-    <main className="min-h-screen bg-brand-surface">
-      <header className="border-b border-black/5 bg-white">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
-          <Logo />
-          <div className="flex items-center gap-3">
-            <span className="hidden text-sm text-slate-500 sm:inline">{userEmail}</span>
-            <button
-              onClick={() => signOut({ callbackUrl: "/login" })}
-              className="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100"
-            >
-              Cerrar sesión
-            </button>
-          </div>
-        </div>
-      </header>
+  const q = query.trim().toLowerCase();
+  const matches = (t: OwnedTimeline) => !q || t.title.toLowerCase().includes(q);
+  const ownedShown = owned.filter(matches);
+  const sharedShown = shared.filter(matches);
+  const me = userName || userEmail;
+  const pageTitle = MENU.find((m) => m.view === view)!.label;
 
-      <div className="mx-auto max-w-3xl px-4 py-10">
-        <div className="mb-8 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-brand-ink">Mis líneas de tiempo</h1>
-          <button
-            onClick={createTimeline}
-            disabled={creating}
-            className="rounded bg-brand-coral px-4 py-2 font-medium text-white transition-colors hover:bg-brand-coralDark disabled:opacity-50"
-          >
-            {creating ? "Creando..." : "+ Nueva línea de tiempo"}
+  return (
+    <div className="app">
+      <aside className="sidebar">
+        <Logo />
+        <nav className="menu">
+          {MENU.map((m) => (
+            <button key={m.view} className={view === m.view ? "active" : ""} onClick={() => setView(m.view)}>
+              <b>{m.icon}</b> <span>{m.label}</span>
+            </button>
+          ))}
+        </nav>
+        <div className="sidebar-foot">
+          <div className="small muted mb-2 truncate" title={userEmail}>
+            {me}
+          </div>
+          <button className="btn btn-outline btn-sm w-full" onClick={() => signOut({ callbackUrl: "/" })}>
+            Salir
+          </button>
+        </div>
+      </aside>
+
+      <main className="main">
+        <div className="page-head">
+          <h1>{pageTitle}</h1>
+          <button className="btn btn-coral" onClick={createTimeline} disabled={creating}>
+            {creating ? "Creando..." : "＋ Nueva línea de tiempo"}
           </button>
         </div>
 
+        <div className="search">
+          <input
+            className="input"
+            placeholder="⌕  Buscar líneas de tiempo..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+
+        {error && <p className="error mb-4">{error}</p>}
+
         {loading ? (
-          <p className="text-slate-500">Cargando...</p>
+          <div className="card grid gap-4 p-6">
+            <div className="loading w-1/2" />
+            <div className="loading w-3/4" />
+            <div className="loading w-2/3" />
+          </div>
         ) : (
           <>
-            <section className="mb-10">
-              <h2 className="mb-3 text-lg font-medium text-brand-ink">Mías</h2>
-              {owned.length === 0 && <p className="text-sm text-slate-500">Aún no tienes líneas de tiempo.</p>}
-              <ul className="flex flex-col gap-2">
-                {owned.map((t) => (
-                  <li key={t.id}>
-                    <Link
-                      href={`/timelines/${t.id}`}
-                      className="block rounded-lg border border-slate-200 bg-white px-4 py-3 transition-colors hover:border-brand-accent"
-                    >
-                      <span className="font-medium text-brand-ink">{t.title}</span>
-                      <span className="ml-2 text-xs text-slate-400">
-                        Actualizado {new Date(t.updatedAt).toLocaleDateString()}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            {view !== "compartidas" && (
+              <>
+                <div className="section-title">
+                  <h2>Mis líneas de tiempo</h2>
+                  {view === "inicio" && owned.length > 0 && (
+                    <button className="link" onClick={() => setView("mias")}>
+                      Ver todas
+                    </button>
+                  )}
+                </div>
+                {ownedShown.length === 0 ? (
+                  <div className="card empty">
+                    <div className="ico">＋</div>
+                    <strong>{q ? "Sin resultados" : "Aún no tienes líneas de tiempo"}</strong>
+                    <p className="small muted">
+                      {q ? "Prueba con otro nombre." : "Crea la primera y empieza a agregar tus hitos."}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="card table-wrap">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Nombre</th>
+                          <th>Última edición</th>
+                          <th>Dueño</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(view === "inicio" ? ownedShown.slice(0, 5) : ownedShown).map((t) => (
+                          <tr key={t.id} className="clickable" onClick={() => router.push(`/timelines/${t.id}`)}>
+                            <td>
+                              <Link href={`/timelines/${t.id}`} className="font-bold" onClick={(e) => e.stopPropagation()}>
+                                {t.title}
+                              </Link>
+                              <br />
+                              <span className="small muted">{milestoneCount(t._count.items)}</span>
+                            </td>
+                            <td>{formatEdited(t.updatedAt)}</td>
+                            <td>
+                              <span className="avatar">{initials(me)}</span>Tú
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
 
-            <section>
-              <h2 className="mb-3 text-lg font-medium text-brand-ink">Compartidas conmigo</h2>
-              {shared.length === 0 && (
-                <p className="text-sm text-slate-500">Nadie ha compartido líneas de tiempo contigo todavía.</p>
-              )}
-              <ul className="flex flex-col gap-2">
-                {shared.map((t) => (
-                  <li key={t.id}>
-                    <Link
-                      href={`/timelines/${t.id}`}
-                      className="block rounded-lg border border-slate-200 bg-white px-4 py-3 transition-colors hover:border-brand-accent"
-                    >
-                      <span className="font-medium text-brand-ink">{t.title}</span>
-                      <span className="ml-2 text-xs text-slate-400">
-                        de {t.owner.name || t.owner.email} ·{" "}
-                        {t.shares[0]?.permission === "EDIT" ? "puede editar" : "solo ver"}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            {view !== "mias" && (
+              <>
+                <div className="section-title">
+                  <h2>Compartidas conmigo</h2>
+                  {view === "inicio" && shared.length > 0 && (
+                    <button className="link" onClick={() => setView("compartidas")}>
+                      Ver todas
+                    </button>
+                  )}
+                </div>
+                {sharedShown.length === 0 ? (
+                  <div className="card empty">
+                    <div className="ico">↗</div>
+                    <strong>{q ? "Sin resultados" : "Nada compartido todavía"}</strong>
+                    <p className="small muted">
+                      {q ? "Prueba con otro nombre." : "Cuando alguien comparta una línea de tiempo contigo, aparecerá aquí."}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="card table-wrap">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Nombre</th>
+                          <th>Última edición</th>
+                          <th>Dueño</th>
+                          <th>Permiso</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(view === "inicio" ? sharedShown.slice(0, 5) : sharedShown).map((t) => {
+                          const owner = t.owner.name || t.owner.email;
+                          const canEdit = t.shares[0]?.permission === "EDIT";
+                          return (
+                            <tr key={t.id} className="clickable" onClick={() => router.push(`/timelines/${t.id}`)}>
+                              <td>
+                                <Link href={`/timelines/${t.id}`} className="font-bold" onClick={(e) => e.stopPropagation()}>
+                                {t.title}
+                              </Link>
+                                <br />
+                                <span className="small muted">{milestoneCount(t._count.items)}</span>
+                              </td>
+                              <td>{formatEdited(t.updatedAt)}</td>
+                              <td>
+                                <span className="avatar">{initials(owner)}</span>
+                                {owner}
+                              </td>
+                              <td>
+                                <span className={`badge ${canEdit ? "badge-edit" : "badge-view"}`}>
+                                  {canEdit ? "Puede editar" : "Puede ver"}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
           </>
         )}
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }

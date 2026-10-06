@@ -46,52 +46,60 @@ export default function SharePanel({ timelineId, shares, onChange }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-black/5 bg-white p-4 shadow-sm">
-      <h3 className="mb-3 text-sm font-medium text-brand-ink">Compartir</h3>
-      <form onSubmit={addShare} className="mb-3 flex flex-wrap gap-2">
-        <input
-          type="text"
-          required
-          placeholder="Email o nombre de usuario"
-          value={identifier}
-          onChange={(e) => setIdentifier(e.target.value)}
-          className="flex-1 rounded border border-slate-200 px-2 py-1.5 text-sm outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent"
-        />
-        <select
-          value={permission}
-          onChange={(e) => setPermission(e.target.value as "VIEW" | "EDIT")}
-          className="rounded border border-slate-200 px-2 py-1.5 text-sm outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent"
-        >
-          <option value="VIEW">Puede ver</option>
-          <option value="EDIT">Puede editar</option>
-        </select>
-        <button
-          type="submit"
-          disabled={loading}
-          className="rounded bg-brand-primary px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-primaryDark disabled:opacity-50"
-        >
-          Invitar
-        </button>
+    <div className="panel-section">
+      <h3>Compartir</h3>
+      <form onSubmit={addShare}>
+        <div className="field">
+          <label htmlFor="share-identifier">Invitar por email o nombre de usuario</label>
+          <input
+            id="share-identifier"
+            className="input input-sm"
+            type="text"
+            required
+            placeholder="nombre@empresa.com"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+          />
+        </div>
+        <div className="flex gap-2">
+          <select
+            className="input input-sm"
+            aria-label="Permiso"
+            value={permission}
+            onChange={(e) => setPermission(e.target.value as "VIEW" | "EDIT")}
+          >
+            <option value="VIEW">Puede ver</option>
+            <option value="EDIT">Puede editar</option>
+          </select>
+          <button type="submit" disabled={loading} className="btn btn-primary btn-sm">
+            {loading ? "Invitando…" : "Invitar"}
+          </button>
+        </div>
       </form>
-      {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
+      {error && <p className="error mt-3">{error}</p>}
 
-      {shares.length > 0 && (
-        <ul className="flex flex-col gap-1.5">
-          {shares.map((s) => (
-            <li key={s.id} className="flex items-center justify-between text-sm">
-              <span>
-                {s.sharedWithUser.name || s.sharedWithUser.email}{" "}
-                <span className="text-slate-400">
-                  · {s.permission === "EDIT" ? "puede editar" : "solo ver"}
-                </span>
+      <div className="mt-4">
+        {shares.length === 0 ? (
+          <p className="small muted">Aún no has compartido esta línea de tiempo.</p>
+        ) : (
+          shares.map((s) => (
+            <div key={s.id} className="share-row">
+              <span className="truncate">
+                <span className="avatar">{(s.sharedWithUser.name || s.sharedWithUser.email).slice(0, 2)}</span>
+                {s.sharedWithUser.name || s.sharedWithUser.email}
               </span>
-              <button onClick={() => removeShare(s.id)} className="text-slate-400 hover:text-red-600">
-                Quitar
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+              <span className="flex items-center gap-1">
+                <span className={`badge ${s.permission === "EDIT" ? "badge-edit" : "badge-view"}`}>
+                  {s.permission === "EDIT" ? "Edita" : "Ve"}
+                </span>
+                <button className="icon-btn danger" onClick={() => removeShare(s.id)} title="Quitar acceso">
+                  ✕
+                </button>
+              </span>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }

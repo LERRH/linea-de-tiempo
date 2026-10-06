@@ -12,7 +12,7 @@ export async function GET() {
   const owned = await prisma.timeline.findMany({
     where: { ownerId: session.user.id },
     orderBy: { updatedAt: "desc" },
-    select: { id: true, title: true, updatedAt: true },
+    select: { id: true, title: true, updatedAt: true, _count: { select: { items: true } } },
   });
 
   const shared = await prisma.timeline.findMany({
@@ -22,6 +22,7 @@ export async function GET() {
       id: true,
       title: true,
       updatedAt: true,
+      _count: { select: { items: true } },
       owner: { select: { email: true, name: true } },
       shares: { where: { sharedWithUserId: session.user.id }, select: { permission: true } },
     },

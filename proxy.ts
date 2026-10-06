@@ -6,6 +6,7 @@ export default withAuth({
   },
 });
 
+// "/" is public: it shows the landing page to visitors and the dashboard to signed-in users.
 export const config = {
-  matcher: ["/", "/timelines/:path*"],
+  matcher: ["/timelines/:path*"],
 };

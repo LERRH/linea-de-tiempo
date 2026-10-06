@@ -2,44 +2,35 @@
 
 import { useRef, useState } from "react";
 import { ChartItem } from "@/components/TimelineChart";
-import { ColumnsConfig, TimelineGroup } from "@/lib/palette";
+import { TimelineGroup } from "@/lib/palette";
 import { downloadExcel, parseExcelFile, resolveImportedRows } from "@/lib/excel";
 
 interface Props {
   items: ChartItem[];
   onChange: (items: ChartItem[]) => void;
   editable: boolean;
-  columns: ColumnsConfig;
-  onColumnsChange: (columns: ColumnsConfig) => void;
   groups: TimelineGroup[];
   onGroupsChange: (groups: TimelineGroup[]) => void;
   fileName: string;
 }
 
-const COLUMN_LABELS: { key: keyof ColumnsConfig; label: string }[] = [
-  { key: "fecha", label: "Fecha" },
-  { key: "encabezado", label: "Encabezado" },
-  { key: "hito", label: "Hito" },
-];
+function daysBetween(from: string, to: string): number | null {
+  if (!from || !to) return null;
+  return Math.round(
+    (new Date(to + "T00:00:00").getTime() - new Date(from + "T00:00:00").getTime()) / 86400000
+  );
+}
 
 export default function TimelineTable({
   items,
   onChange,
   editable,
-  columns,
-  onColumnsChange,
   groups,
   onGroupsChange,
   fileName,
 }: Props) {
-  const activeCount = Object.values(columns).filter(Boolean).length;
   const [importError, setImportError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  function toggleColumn(key: keyof ColumnsConfig) {
-    if (columns[key] && activeCount <= 1) return;
-    onColumnsChange({ ...columns, [key]: !columns[key] });
-  }
 
   function update(index: number, patch: Partial<ChartItem>) {
     const next = items.map((item, i) => (i === index ? { ...item, ...patch } : item));
@@ -98,22 +89,20 @@ export default function TimelineTable({
     }
   }
 
+  const colorOf = (grupoId: string) => groups.find((g) => g.id === grupoId)?.color;
+
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <button
-          onClick={exportExcel}
-          className="rounded border border-brand-primary px-3 py-1.5 text-sm text-brand-primary hover:bg-brand-primary/5"
-        >
-          Exportar a Excel
-        </button>
+      <div className="table-tools">
+        {editable && (
+          <button className="btn btn-coral btn-sm" onClick={addRow}>
+            ＋ Agregar hito
+          </button>
+        )}
         {editable && (
           <>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="rounded border border-brand-accent px-3 py-1.5 text-sm text-brand-accent hover:bg-brand-accent/10"
-            >
-              Importar desde Excel
+            <button className="btn btn-outline btn-sm" onClick={() => fileInputRef.current?.click()}>
+              ⇧ Importar Excel
             </button>
             <input
               ref={fileInputRef}
@@ -124,134 +113,136 @@ export default function TimelineTable({
             />
           </>
         )}
+        <button className="btn btn-outline btn-sm" onClick={exportExcel}>
+          ⇩ Exportar Excel
+        </button>
       </div>
-      {importError && <p className="mb-3 text-sm text-red-600">{importError}</p>}
+      {importError && <p className="error mb-3">{importError}</p>}
 
-      {editable && (
-        <div className="mb-2 flex flex-wrap items-center gap-4 text-sm text-slate-600">
-          <span>Columnas:</span>
-          {COLUMN_LABELS.map(({ key, label }) => (
-            <label key={key} className="flex items-center gap-1.5">
-              <input
-                type="checkbox"
-                checked={columns[key]}
-                onChange={() => toggleColumn(key)}
-                disabled={columns[key] && activeCount <= 1}
-                className="accent-brand-accent"
-              />
-              {label}
-            </label>
-          ))}
-        </div>
-      )}
-      <div className="overflow-x-auto rounded-xl border border-black/5 bg-white shadow-sm">
-        <table className="w-full text-sm">
+      <section className="card table-wrap">
+        <table className="data-table compact">
           <thead>
-            <tr className="border-b border-slate-200 bg-brand-cream/40 text-left">
-              {columns.fecha && <th className="px-3 py-2 font-medium text-slate-600">Fecha</th>}
-              {columns.encabezado && <th className="px-3 py-2 font-medium text-slate-600">Encabezado</th>}
-              {columns.hito && <th className="px-3 py-2 font-medium text-slate-600">Hito</th>}
-              <th className="px-3 py-2 font-medium text-slate-600">Grupo</th>
-              {editable && <th className="px-3 py-2 font-medium text-slate-600">Acciones</th>}
+            <tr>
+              <th>#</th>
+              <th>Fecha</th>
+              <th>Encabezado</th>
+              <th>Hito / Descripción</th>
+              <th>Grupo</th>
+              <th title="Días desde el hito anterior">Días</th>
+              {editable && <th aria-label="Acciones" />}
             </tr>
           </thead>
           <tbody>
-            {items.map((item, i) => (
-              <tr key={i} className="border-b border-slate-100 last:border-0">
-                {columns.fecha && (
-                  <td className="px-3 py-1.5">
+            {items.length === 0 && (
+              <tr>
+                <td colSpan={editable ? 7 : 6} className="empty">
+                  <span className="muted">
+                    {editable ? "Agrega tu primer hito con “＋ Agregar hito” o importa un Excel." : "Sin hitos todavía."}
+                  </span>
+                </td>
+              </tr>
+            )}
+            {items.map((item, i) => {
+              const days = i === 0 ? null : daysBetween(items[i - 1].date, item.date);
+              return (
+                <tr key={i}>
+                  <td className="muted">{i + 1}</td>
+                  <td>
                     <input
                       type="date"
+                      className="cell-input"
+                      aria-label={`Fecha del hito ${i + 1}`}
                       value={item.date}
                       disabled={!editable}
                       onChange={(e) => update(i, { date: e.target.value })}
-                      className="w-full rounded border border-slate-200 px-2 py-1 outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent disabled:bg-slate-50"
                     />
                   </td>
-                )}
-                {columns.encabezado && (
-                  <td className="px-3 py-1.5">
+                  <td>
                     <input
                       type="text"
+                      className="cell-input font-semibold"
+                      aria-label={`Encabezado del hito ${i + 1}`}
                       value={item.encabezado}
                       disabled={!editable}
-                      placeholder="Encabezado (negrita)"
+                      placeholder="Encabezado"
                       onChange={(e) => update(i, { encabezado: e.target.value })}
-                      className="w-full rounded border border-slate-200 px-2 py-1 font-semibold outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent disabled:bg-slate-50"
                     />
                   </td>
-                )}
-                {columns.hito && (
-                  <td className="px-3 py-1.5">
+                  <td>
                     <input
                       type="text"
+                      className="cell-input min-w-[200px]"
+                      aria-label={`Descripción del hito ${i + 1}`}
                       value={item.hito}
                       disabled={!editable}
-                      placeholder="Nombre del hito"
+                      placeholder="Descripción del hito"
                       onChange={(e) => update(i, { hito: e.target.value })}
-                      className="w-full rounded border border-slate-200 px-2 py-1 outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent disabled:bg-slate-50"
                     />
                   </td>
-                )}
-                <td className="px-3 py-1.5">
-                  <select
-                    value={item.grupoId}
-                    disabled={!editable}
-                    onChange={(e) => update(i, { grupoId: e.target.value })}
-                    className="w-full rounded border border-slate-200 px-2 py-1 outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent disabled:bg-slate-50"
-                  >
-                    <option value="">Sin grupo</option>
-                    {groups.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.name}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                {editable && (
-                  <td className="whitespace-nowrap px-3 py-1.5 text-center">
-                    <button
-                      onClick={() => moveRow(i, -1)}
-                      disabled={i === 0}
-                      className="text-slate-400 hover:text-slate-700 disabled:opacity-25"
-                      title="Subir hito"
-                    >
-                      ↑
-                    </button>{" "}
-                    <button
-                      onClick={() => moveRow(i, 1)}
-                      disabled={i === items.length - 1}
-                      className="text-slate-400 hover:text-slate-700 disabled:opacity-25"
-                      title="Bajar hito"
-                    >
-                      ↓
-                    </button>{" "}
-                    <button
-                      onClick={() => insertRowAfter(i)}
-                      className="text-slate-400 hover:text-brand-accent"
-                      title="Insertar hito debajo"
-                    >
-                      +
-                    </button>{" "}
-                    <button
-                      onClick={() => removeRow(i)}
-                      className="text-slate-400 hover:text-red-600"
-                      title="Eliminar fila"
-                    >
-                      ✕
-                    </button>
+                  <td>
+                    <span className="flex items-center">
+                      <i className="dot" style={{ background: colorOf(item.grupoId) ?? "#cbd5e1" }} />
+                      <select
+                        className="cell-input"
+                        aria-label={`Grupo del hito ${i + 1}`}
+                        value={item.grupoId}
+                        disabled={!editable}
+                        onChange={(e) => update(i, { grupoId: e.target.value })}
+                      >
+                        <option value="">Sin grupo</option>
+                        {groups.map((g) => (
+                          <option key={g.id} value={g.id}>
+                            {g.name}
+                          </option>
+                        ))}
+                      </select>
+                    </span>
                   </td>
-                )}
-              </tr>
-            ))}
+                  <td className={days !== null && days < 0 ? "text-red-600" : "muted"}>{days ?? "—"}</td>
+                  {editable && (
+                    <td>
+                      <button
+                        className="icon-btn"
+                        onClick={() => moveRow(i, -1)}
+                        disabled={i === 0}
+                        title="Subir hito"
+                        aria-label="Subir hito"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        className="icon-btn"
+                        onClick={() => moveRow(i, 1)}
+                        disabled={i === items.length - 1}
+                        title="Bajar hito"
+                        aria-label="Bajar hito"
+                      >
+                        ↓
+                      </button>
+                      <button
+                        className="icon-btn"
+                        onClick={() => insertRowAfter(i)}
+                        title="Insertar hito debajo"
+                        aria-label="Insertar hito debajo"
+                      >
+                        ＋
+                      </button>
+                      <button
+                        className="icon-btn danger"
+                        onClick={() => removeRow(i)}
+                        title="Eliminar hito"
+                        aria-label="Eliminar hito"
+                      >
+                        ✕
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
-        {editable && (
-          <button onClick={addRow} className="w-full border-t border-slate-200 py-2 text-sm text-brand-accent hover:bg-slate-50">
-            + Agregar fila
-          </button>
-        )}
-      </div>
+      </section>
     </div>
   );
 }

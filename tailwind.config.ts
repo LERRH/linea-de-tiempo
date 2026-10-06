@@ -22,6 +22,8 @@ const config: Config = {
       },
     },
   },
+  // `.container` is defined by the RutaPRO design system in globals.css.
+  corePlugins: { container: false },
   plugins: [],
 };
 
