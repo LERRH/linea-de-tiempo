@@ -1,28 +1,16 @@
 "use client";
 
 import { RefObject, useState } from "react";
-import type { ChartItem } from "@/components/TimelineChart";
-import type { TimelineGroup } from "@/lib/palette";
-import {
-  downloadDocx,
-  downloadPptx,
-  serializeSvg,
-  svgToPngBlob,
-  triggerDownload,
-} from "@/lib/office-export";
+import { downloadPptx, serializeSvg, svgToPngBlob, triggerDownload } from "@/lib/pptx-export";
 
 interface Props {
   svgRef: RefObject<SVGSVGElement | null>;
   fileName: string;
   title: string;
-  items: ChartItem[];
-  groups: TimelineGroup[];
 }
 
-type Format = "pptx" | "docx";
-
-export default function ExportButtons({ svgRef, fileName, title, items, groups }: Props) {
-  const [busy, setBusy] = useState<Format | null>(null);
+export default function ExportButtons({ svgRef, fileName, title }: Props) {
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function downloadSvg() {
@@ -38,19 +26,18 @@ export default function ExportButtons({ svgRef, fileName, title, items, groups }
     triggerDownload(await svgToPngBlob(svg), `${fileName}.png`);
   }
 
-  async function downloadOffice(format: Format) {
+  async function downloadPowerPoint() {
     const svg = svgRef.current;
     if (!svg || busy) return;
-    setBusy(format);
+    setBusy(true);
     setError(null);
     try {
-      if (format === "pptx") await downloadPptx(svg, title, fileName);
-      else await downloadDocx(svg, title, items, groups, fileName);
+      await downloadPptx(svg, title, fileName);
     } catch (err) {
       console.error(err);
-      setError(`No se pudo generar el archivo ${format === "pptx" ? "PowerPoint" : "Word"}.`);
+      setError("No se pudo generar el archivo PowerPoint.");
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }
 
@@ -69,11 +56,8 @@ export default function ExportButtons({ svgRef, fileName, title, items, groups }
         >
           Descargar PNG
         </button>
-        <button onClick={() => downloadOffice("pptx")} disabled={busy !== null} className={outline}>
-          {busy === "pptx" ? "Generando…" : "Descargar PowerPoint"}
-        </button>
-        <button onClick={() => downloadOffice("docx")} disabled={busy !== null} className={outline}>
-          {busy === "docx" ? "Generando…" : "Descargar Word"}
+        <button onClick={downloadPowerPoint} disabled={busy} className={outline}>
+          {busy ? "Generando…" : "Descargar PowerPoint"}
         </button>
       </div>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}

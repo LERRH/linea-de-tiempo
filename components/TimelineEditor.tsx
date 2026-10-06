@@ -176,8 +176,6 @@ export default function TimelineEditor({
             svgRef={svgRef}
             fileName={title || "linea-de-tiempo"}
             title={title || "Línea de tiempo"}
-            items={items}
-            groups={style.groups}
           />
         </div>
 
