@@ -1,80 +1,82 @@
 "use client";
 
-import { RefObject } from "react";
+import { RefObject, useState } from "react";
+import type { ChartItem } from "@/components/TimelineChart";
+import type { TimelineGroup } from "@/lib/palette";
+import {
+  downloadDocx,
+  downloadPptx,
+  serializeSvg,
+  svgToPngBlob,
+  triggerDownload,
+} from "@/lib/office-export";
 
 interface Props {
   svgRef: RefObject<SVGSVGElement | null>;
   fileName: string;
+  title: string;
+  items: ChartItem[];
+  groups: TimelineGroup[];
 }
 
-function serializeSvg(svg: SVGSVGElement): string {
-  const clone = svg.cloneNode(true) as SVGSVGElement;
-  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-  return new XMLSerializer().serializeToString(clone);
-}
+type Format = "pptx" | "docx";
 
-function triggerDownload(blob: Blob, fileName: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
+export default function ExportButtons({ svgRef, fileName, title, items, groups }: Props) {
+  const [busy, setBusy] = useState<Format | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-export default function ExportButtons({ svgRef, fileName }: Props) {
   function downloadSvg() {
     const svg = svgRef.current;
     if (!svg) return;
-    const svgString = serializeSvg(svg);
-    const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+    const blob = new Blob([serializeSvg(svg)], { type: "image/svg+xml;charset=utf-8" });
     triggerDownload(blob, `${fileName}.svg`);
   }
 
-  function downloadPng() {
+  async function downloadPng() {
     const svg = svgRef.current;
     if (!svg) return;
-    const svgString = serializeSvg(svg);
-    const width = Number(svg.getAttribute("width")) || svg.clientWidth;
-    const height = Number(svg.getAttribute("height")) || svg.clientHeight;
-    const scale = 2;
-
-    const img = new Image();
-    const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(svgBlob);
-
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = width * scale;
-      canvas.height = height * scale;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      ctx.scale(scale, scale);
-      ctx.drawImage(img, 0, 0, width, height);
-      URL.revokeObjectURL(url);
-      canvas.toBlob((blob) => {
-        if (blob) triggerDownload(blob, `${fileName}.png`);
-      }, "image/png");
-    };
-    img.src = url;
+    triggerDownload(await svgToPngBlob(svg), `${fileName}.png`);
   }
 
+  async function downloadOffice(format: Format) {
+    const svg = svgRef.current;
+    if (!svg || busy) return;
+    setBusy(format);
+    setError(null);
+    try {
+      if (format === "pptx") await downloadPptx(svg, title, fileName);
+      else await downloadDocx(svg, title, items, groups, fileName);
+    } catch (err) {
+      console.error(err);
+      setError(`No se pudo generar el archivo ${format === "pptx" ? "PowerPoint" : "Word"}.`);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const outline =
+    "rounded border border-brand-primary px-3 py-1.5 text-sm text-brand-primary hover:bg-brand-primary/5 disabled:opacity-50";
+
   return (
-    <div className="flex gap-2">
-      <button
-        onClick={downloadSvg}
-        className="rounded border border-brand-primary px-3 py-1.5 text-sm text-brand-primary hover:bg-brand-primary/5"
-      >
-        Descargar SVG
-      </button>
-      <button
-        onClick={downloadPng}
-        className="rounded bg-brand-primary px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-primaryDark"
-      >
-        Descargar PNG
-      </button>
+    <div>
+      <div className="flex flex-wrap gap-2">
+        <button onClick={downloadSvg} className={outline}>
+          Descargar SVG
+        </button>
+        <button
+          onClick={downloadPng}
+          className="rounded bg-brand-primary px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-primaryDark"
+        >
+          Descargar PNG
+        </button>
+        <button onClick={() => downloadOffice("pptx")} disabled={busy !== null} className={outline}>
+          {busy === "pptx" ? "Generando…" : "Descargar PowerPoint"}
+        </button>
+        <button onClick={() => downloadOffice("docx")} disabled={busy !== null} className={outline}>
+          {busy === "docx" ? "Generando…" : "Descargar Word"}
+        </button>
+      </div>
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>
   );
 }
