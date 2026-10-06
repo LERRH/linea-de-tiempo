@@ -172,7 +172,13 @@ export default function TimelineEditor({
         </div>
 
         <div className="mb-6">
-          <ExportButtons svgRef={svgRef} fileName={title || "linea-de-tiempo"} />
+          <ExportButtons
+            svgRef={svgRef}
+            fileName={title || "linea-de-tiempo"}
+            title={title || "Línea de tiempo"}
+            items={items}
+            groups={style.groups}
+          />
         </div>
 
         <div className="mb-6">
