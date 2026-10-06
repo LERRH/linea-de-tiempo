@@ -238,6 +238,35 @@ a {
     background: #eef5f6;
     color: var(--primary);
   }
+  .dropdown-menu button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .dropdown-menu button:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .dropdown-menu button.danger {
+    color: #b42318;
+  }
+  .dropdown-menu button.danger:hover:not(:disabled) {
+    background: #fff1ed;
+    color: #b42318;
+  }
+  .menu-icon {
+    width: 16px;
+    text-align: center;
+    color: var(--muted);
+  }
+  .dropdown-menu button.danger .menu-icon {
+    color: inherit;
+  }
+  .row-menu-btn {
+    font-size: 12px;
+    letter-spacing: 1px;
+    padding: 4px 8px;
+  }
 
   /* ---------- Landing ---------- */
   .nav {

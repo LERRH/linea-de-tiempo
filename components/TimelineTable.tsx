@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChartItem } from "@/components/TimelineChart";
 import { TimelineGroup } from "@/lib/palette";
 import { downloadExcel, parseExcelFile, resolveImportedRows } from "@/lib/excel";
@@ -62,6 +62,102 @@ function DaysInput({
       }}
       onBlur={() => setDraft(null)}
     />
+  );
+}
+
+interface RowAction {
+  label: string;
+  icon: string;
+  onSelect: () => void;
+  disabled?: boolean;
+  danger?: boolean;
+}
+
+const MENU_WIDTH = 200;
+const MENU_HEIGHT = 180;
+
+/**
+ * "•••" button that opens the row's actions. The menu is position: fixed so
+ * the table's scroll container can't clip it on the last rows.
+ */
+function RowMenu({ label, actions }: { label: string; actions: RowAction[] }) {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!pos) return;
+    const close = () => setPos(null);
+    function onPointerDown(e: PointerEvent) {
+      const target = e.target as Node;
+      if (!menuRef.current?.contains(target) && !buttonRef.current?.contains(target)) close();
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        close();
+        buttonRef.current?.focus();
+      }
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    menuRef.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [pos]);
+
+  function toggle() {
+    if (pos) return setPos(null);
+    const rect = buttonRef.current!.getBoundingClientRect();
+    const opensUp = rect.bottom + MENU_HEIGHT > window.innerHeight;
+    setPos({
+      top: opensUp ? rect.top - MENU_HEIGHT - 4 : rect.bottom + 4,
+      left: Math.max(8, rect.right - MENU_WIDTH),
+    });
+  }
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        className="icon-btn row-menu-btn"
+        onClick={toggle}
+        aria-label={label}
+        aria-haspopup="menu"
+        aria-expanded={pos !== null}
+      >
+        •••
+      </button>
+      {pos && (
+        <div
+          ref={menuRef}
+          className="dropdown-menu card"
+          role="menu"
+          style={{ position: "fixed", top: pos.top, left: pos.left, width: MENU_WIDTH, right: "auto" }}
+        >
+          {actions.map((a) => (
+            <button
+              key={a.label}
+              role="menuitem"
+              disabled={a.disabled}
+              className={a.danger ? "danger" : ""}
+              onClick={() => {
+                setPos(null);
+                a.onSelect();
+              }}
+            >
+              <span className="menu-icon">{a.icon}</span>
+              {a.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -189,7 +285,7 @@ export default function TimelineTable({
               <th>Encabezado</th>
               <th>Hito / Descripción</th>
               <th>Grupo</th>
-              {editable && <th aria-label="Acciones" />}
+              {editable && <th className="text-center">Acciones</th>}
             </tr>
           </thead>
           <tbody>
@@ -271,41 +367,21 @@ export default function TimelineTable({
                     </span>
                   </td>
                   {editable && (
-                    <td>
-                      <button
-                        className="icon-btn"
-                        onClick={() => moveRow(i, -1)}
-                        disabled={i === 0}
-                        title="Subir hito"
-                        aria-label="Subir hito"
-                      >
-                        ↑
-                      </button>
-                      <button
-                        className="icon-btn"
-                        onClick={() => moveRow(i, 1)}
-                        disabled={i === items.length - 1}
-                        title="Bajar hito"
-                        aria-label="Bajar hito"
-                      >
-                        ↓
-                      </button>
-                      <button
-                        className="icon-btn"
-                        onClick={() => insertRowAfter(i)}
-                        title="Insertar hito debajo"
-                        aria-label="Insertar hito debajo"
-                      >
-                        ＋
-                      </button>
-                      <button
-                        className="icon-btn danger"
-                        onClick={() => removeRow(i)}
-                        title="Eliminar hito"
-                        aria-label="Eliminar hito"
-                      >
-                        ✕
-                      </button>
+                    <td className="text-center">
+                      <RowMenu
+                        label={`Acciones del hito ${i + 1}`}
+                        actions={[
+                          { label: "Subir hito", icon: "↑", onSelect: () => moveRow(i, -1), disabled: i === 0 },
+                          {
+                            label: "Bajar hito",
+                            icon: "↓",
+                            onSelect: () => moveRow(i, 1),
+                            disabled: i === items.length - 1,
+                          },
+                          { label: "Insertar hito debajo", icon: "＋", onSelect: () => insertRowAfter(i) },
+                          { label: "Eliminar hito", icon: "✕", onSelect: () => removeRow(i), danger: true },
+                        ]}
+                      />
                     </td>
                   )}
                 </tr>
