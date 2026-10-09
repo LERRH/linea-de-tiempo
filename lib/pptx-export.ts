@@ -39,8 +39,6 @@ export function svgToPngBlob(svg: SVGSVGElement, scale = 2): Promise<Blob> {
       canvas.height = height * scale;
       const ctx = canvas.getContext("2d");
       if (!ctx) return reject(new Error("Canvas no disponible"));
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.scale(scale, scale);
       ctx.drawImage(img, 0, 0, width, height);
       canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("No se pudo generar el PNG"))), "image/png");
